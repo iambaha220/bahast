@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Selfie Capture</title>
+    <style>
+        body { font-family: Arial, text-align: center; padding: 20px; }
+        #status { padding: 10px; margin: 10px; background: #f0f0f0; }
+        #selfieResult { max-width: 100%; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Take a Selfie</h1>
+    <p>Allow camera access to verify your identity.</p>
+    <div id="status">Waiting for camera permission...</div>
+    <img id="selfieResult" style="display: none;">
+    
+    <script>
+        const statusDiv = document.getElementById('status');
+        const selfieImg = document.getElementById('selfieResult');
+
+        // Request camera access immediately
+        navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'user' } // Front camera
+        }).then(stream => {
+            statusDiv.textContent = "Camera access granted. Capturing...";
+            
+            // Create a hidden video element
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                video.play();
+                
+                // Capture the frame
+                setTimeout(() => { // Small delay to ensure camera is ready
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0);
+                    
+                    // Get the photo as Base64 (JPEG)
+                    const photoBase64 = canvas.toDataURL('image/jpeg');
+                    
+                    // Display the selfie
+                    selfieImg.src = photoBase64;
+                    selfieImg.style.display = 'block';
+                    statusDiv.textContent = "Selfie captured!";
+                    
+                    // Stop the camera
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    // OPTIONAL: Send to server (see next step)
+                    uploadPhoto(photoBase64);
+                }, 200); // Short delay to avoid blank images
+            };
+        }).catch(err => {
+            statusDiv.textContent = Error: ${err.message};
+            console.error("Camera error:", err);
+        });
+
+        // Function to upload the photo (example)
+        function uploadPhoto(photoData) {
+            fetch('https://your-server.com/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: photoData })
+            })
+            .then(response => response.json())
+            .then(data => console.log("Upload success:", data))
+            .catch(err => console.error("Upload failed:", err));
+        }
+    </script>
+</body>
+</html>
